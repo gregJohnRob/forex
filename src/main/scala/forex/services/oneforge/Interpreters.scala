@@ -9,10 +9,10 @@ import org.atnos.eff.all._
 import org.atnos.eff.addon.monix.task._
 
 object Interpreters {
-  def dummy[R](
+  def live[R](api_key: String)(
       implicit
       m1: _task[R]
-  ): Algebra[Eff[R, ?]] = new Dummy[R]
+  ): Algebra[Eff[R, ?]] = new Live[R](api_key)
 }
 
 final class Dummy[R] private[oneforge] (

@@ -6,10 +6,10 @@ import forex.{ processes ⇒ p }
 import org.zalando.grafter.macros._
 
 @readerOf[ApplicationConfig]
-case class Processes() {
+case class Processes(oneForgeConfig: OneForgeConfig) {
 
   implicit final lazy val _oneForge: s.OneForge[AppEffect] =
-    s.OneForge.dummy[AppStack]
+    s.OneForge.live[AppStack](oneForgeConfig.apiKey)
 
   final val Rates = p.Rates[AppEffect]
 
