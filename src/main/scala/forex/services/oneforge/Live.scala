@@ -2,14 +2,17 @@ package forex.services.oneforge
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import forex.domain._
+import io.circe.Json
 import monix.eval.Task
 import org.atnos.eff._
 import org.atnos.eff.addon.monix.task._
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 final class Live[R] private[oneforge] (apiKey: String)(
     implicit
@@ -28,8 +31,9 @@ final class Live[R] private[oneforge] (apiKey: String)(
       pair: Rate.Pair
   ): Eff[R, Error Either Rate] = {
     val apiCall = Task.defer {
-      val future = Http()
+      val future: Future[Unit] = Http()
         .singleRequest(HttpRequest(uri = quoteCall(pair)))
+          .flatMap(Unmarshal(_).to[Json])
           .map(println(_))
       Task.fromFuture(future)
     }
