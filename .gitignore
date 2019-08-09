@@ -16,3 +16,6 @@ project/plugins/project/
 .scala_dependencies
 .worksheet
 .idea
+
+# Hide the API Key
+src/main/resources/oneforge.conf
