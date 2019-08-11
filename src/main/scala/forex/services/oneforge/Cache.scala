@@ -14,7 +14,7 @@ object Cache {
 
   sealed trait CacheMessage
   final case class GetRate(pair: Rate.Pair, replyTo: ActorRef[RateResponse]) extends CacheMessage
-  final case class RateResponse(rateMaybe: Option[Rate])
+  final case class RateResponse(rateMaybe: Option[Rate]) extends CacheMessage
   final case class PutRate(rate: Rate) extends CacheMessage
 }
 
