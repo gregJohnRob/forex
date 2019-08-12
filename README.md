@@ -35,3 +35,7 @@ sbt run
 ```
 
 To run any tests, use "test" instead of "run".
+
+## Error cases
+OneForge API is down (not handled)
+OneForge cache crashes (not handled)

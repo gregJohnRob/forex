@@ -10,15 +10,17 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import forex.domain.{ Rate, _ }
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import forex.domain._
 import forex.services.oneforge.Cache.RateResponse
+import io.circe.Decoder.Result
 import io.circe.Json
 import monix.eval.Task
 import org.atnos.eff._
 import org.atnos.eff.addon.monix.task._
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
-import scala.concurrent.{ ExecutionContextExecutor, Future }
 
 final class Live[R] private[oneforge] (apiKey: String)(
     implicit
@@ -26,43 +28,58 @@ final class Live[R] private[oneforge] (apiKey: String)(
 ) extends Algebra[Eff[R, ?]] {
   import Live._
 
-  def quoteCall(pair: Rate.Pair) =
-    s"$URL$QUOTES${pair.from}${pair.to}&$API_KEY$apiKey"
-
   implicit val system: ActorSystem = ActorSystem()
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   implicit val timeout: Timeout = 10.seconds
   val dummyPair = Rate.Pair(Currency.GBP, Currency.USD)
-  val dummyRate = Rate(dummyPair, Price(BigDecimal(100)), Timestamp(OffsetDateTime.now.minusMinutes(6)))
+  val invalidDummyRate = Rate(dummyPair, Price(BigDecimal(100)), Timestamp(OffsetDateTime.now.minusMinutes(6)))
   val validDummyRate = Rate(dummyPair, Price(BigDecimal(10)), Timestamp(OffsetDateTime.now))
   val cacheSystem: TypedActorSystem[Cache.CacheMessage] =
-    TypedActorSystem(Cache(Map(dummyPair → dummyRate)), "OneforgeCache")
+    TypedActorSystem(Cache(Map()), "OneforgeCache")
   val cacheRef: ActorRef[Cache.CacheMessage] = cacheSystem
   implicit val scheduler: Scheduler = cacheSystem.scheduler
+
+  private def quoteCall(pair: Rate.Pair) =
+    s"$URL$QUOTES${pair.from}${pair.to}&$API_KEY$apiKey"
+
+  private def checkCache(pair: Rate.Pair): Task[RateResponse] =
+    Task.defer {
+      val cacheResponse = cacheSystem ? ((ref: ActorRef[Cache.RateResponse]) ⇒ Cache.GetRate(pair, ref))
+      Task.fromFuture(cacheResponse)
+    }
+
+  private def callApi(pair: Rate.Pair): Task[Result[List[OneForgeResponse]]] =
+    Task.defer {
+      val future = Http()
+        .singleRequest(HttpRequest(uri = quoteCall(pair)))
+        .flatMap(Unmarshal(_).to[Json])
+        .map(_.as[List[OneForgeResponse]])
+      Task.fromFuture(future)
+    }
 
   override def get(
       pair: Rate.Pair
   ): Eff[R, Error Either Rate] = {
     val apiCall = Task.defer {
       val cacheResponse = cacheSystem ? ((ref: ActorRef[Cache.RateResponse]) ⇒ Cache.GetRate(pair, ref))
-      val future = cacheResponse
-        .map {
-          case RateResponse(Some(rate)) ⇒ // Something was in the cache that is still valid, so return
-            rate
-          case RateResponse(None) ⇒ // Did not see something valid in cache, query the api and update the cache
-            cacheSystem ! Cache.PutRate(validDummyRate)
-            validDummyRate
-        }
-//        Http()
-//        .singleRequest(HttpRequest(uri = quoteCall(pair)))
-//        .flatMap(Unmarshal(_).to[Json])
-//        .map(println(_))
-      Task.fromFuture(future)
+      Task.fromFuture(cacheResponse).flatMap {
+        case RateResponse(Some(rate)) ⇒ // Something was in the cache that is still valid, so return
+          Task.now(rate)
+        case RateResponse(None) ⇒ // Did not see something valid in cache, query the api and update the cache
+          val call = callApi(pair)
+          call.map {
+            case Right(value) ⇒
+              cacheSystem ! Cache.PutRate(value.head.asRate())
+              value.head.asRate()
+            case Left(value) ⇒
+              cacheSystem ! Cache.PutRate(validDummyRate)
+              validDummyRate
+          }
+      }
     }
     for {
       result ← fromTask(apiCall)
-//      result ← fromTask(Task.now(Rate(pair, Price(BigDecimal(100)), Timestamp.now)))
     } yield Right(result)
   }
 }
