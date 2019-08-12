@@ -21,4 +21,8 @@ object Converters {
       timestamp = rate.timestamp
     )
 
+  def toGetApiErrorResponse(
+      error: Error
+  ) = GetApiErrorResponse(error.getMessage)
+
 }

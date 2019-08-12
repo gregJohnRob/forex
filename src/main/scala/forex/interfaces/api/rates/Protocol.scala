@@ -24,4 +24,14 @@ object Protocol {
     implicit val encoder: Encoder[GetApiResponse] = deriveEncoder[GetApiResponse]
   }
 
+  final case class GetApiErrorResponse(
+      message: String
+  )
+
+  object GetApiErrorResponse {
+    implicit val encoder: Encoder[GetApiErrorResponse] = deriveEncoder[GetApiErrorResponse]
+  }
+
+
+
 }

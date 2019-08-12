@@ -7,7 +7,10 @@ object ApiExceptionHandler {
 
   def apply(): server.ExceptionHandler =
     server.ExceptionHandler {
-      case _: RatesError ⇒
+      case RatesError.System(underlying) ⇒
+        ctx ⇒
+          ctx.complete(underlying.getLocalizedMessage)
+      case RatesError.Generic ⇒
         ctx ⇒
           ctx.complete("Something went wrong in the rates process")
       case _: Throwable ⇒
