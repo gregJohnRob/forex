@@ -17,30 +17,41 @@ scalacOptions ++= Seq(
 resolvers +=
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
-val akkaVersion = "2.5.19"
-val circeVersion = "0.9.1"
-val effVersion = "5.3.0"
-val catsVersion = "1.1.0"
+val Versions = new {
+  val akka          = "2.5.19"
+  val akkaHttp      = "10.1.0"
+  val circe         = "0.9.1"
+  val eff           = "5.3.0"
+  val cats          = "1.1.0"
+  val akkaHttpCirce = "1.20.0"
+  val pureConfig    = "0.7.2"
+  val quicklens     = "1.4.11"
+  val grafter       = "2.6.0"
+  val logback       = "1.2.3"
+  val logging       = "3.7.2"
+  val kindProjector = "0.9.4"
+  val paradise      = "2.1.1"
+}
 
 libraryDependencies ++= Seq(
-  "com.github.pureconfig"          %% "pureconfig"           % "0.7.2",
-  "com.softwaremill.quicklens"     %% "quicklens"            % "1.4.11",
-  "com.typesafe.akka"              %% "akka-actor"           % akkaVersion,
-  "com.typesafe.akka"              %% "akka-stream"          % akkaVersion,
-  "com.typesafe.akka"              %% "akka-actor-typed"     % akkaVersion,
-  "com.typesafe.akka"              %% "akka-http"            % "10.1.0",
-  "de.heikoseeberger"              %% "akka-http-circe"      % "1.20.0",
-  "io.circe"                       %% "circe-core"           % circeVersion,
-  "io.circe"                       %% "circe-generic"        % circeVersion,
-  "io.circe"                       %% "circe-generic-extras" % circeVersion,
-  "io.circe"                       %% "circe-java8"          % circeVersion,
-  "io.circe"                       %% "circe-jawn"           % circeVersion,
-  "org.atnos"                      %% "eff"                  % effVersion,
-  "org.atnos"                      %% "eff-monix"            % effVersion,
-  "org.typelevel"                  %% "cats-core"            % catsVersion,
-  "org.zalando"                    %% "grafter"              % "2.6.0",
-  "ch.qos.logback"                 %  "logback-classic"      % "1.2.3",
-  "com.typesafe.scala-logging"     %% "scala-logging"        % "3.7.2",
-  compilerPlugin("org.spire-math"  %% "kind-projector"       % "0.9.4"),
-  compilerPlugin("org.scalamacros" %% "paradise"             % "2.1.1" cross CrossVersion.full)
+  "com.github.pureconfig"          %% "pureconfig"           % Versions.pureConfig,
+  "com.softwaremill.quicklens"     %% "quicklens"            % Versions.quicklens,
+  "com.typesafe.akka"              %% "akka-actor"           % Versions.akka,
+  "com.typesafe.akka"              %% "akka-stream"          % Versions.akka,
+  "com.typesafe.akka"              %% "akka-actor-typed"     % Versions.akka,
+  "com.typesafe.akka"              %% "akka-http"            % Versions.akkaHttp,
+  "de.heikoseeberger"              %% "akka-http-circe"      % Versions.akkaHttpCirce,
+  "io.circe"                       %% "circe-core"           % Versions.circe,
+  "io.circe"                       %% "circe-generic"        % Versions.circe,
+  "io.circe"                       %% "circe-generic-extras" % Versions.circe,
+  "io.circe"                       %% "circe-java8"          % Versions.circe,
+  "io.circe"                       %% "circe-jawn"           % Versions.circe,
+  "org.atnos"                      %% "eff"                  % Versions.eff,
+  "org.atnos"                      %% "eff-monix"            % Versions.eff,
+  "org.typelevel"                  %% "cats-core"            % Versions.cats,
+  "org.zalando"                    %% "grafter"              % Versions.grafter,
+  "ch.qos.logback"                 %  "logback-classic"      % Versions.logback,
+  "com.typesafe.scala-logging"     %% "scala-logging"        % Versions.logging,
+  compilerPlugin("org.spire-math"  %% "kind-projector"       % Versions.kindProjector),
+  compilerPlugin("org.scalamacros" %% "paradise"             % Versions.paradise cross CrossVersion.full)
 )
