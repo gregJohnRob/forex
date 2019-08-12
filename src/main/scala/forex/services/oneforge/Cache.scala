@@ -2,13 +2,12 @@ package forex.services.oneforge
 
 import java.time.OffsetDateTime
 
-import akka.actor.typed.{ ActorRef, Behavior }
 import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
+import akka.actor.typed.{ ActorRef, Behavior }
 import forex.domain.Rate
 import forex.services.oneforge.Cache.{ GetRate, PutRate, RateResponse }
 
 object Cache {
-
   def apply(cache: Map[Rate.Pair, Rate]): Behavior[CacheMessage] =
     Behaviors.setup(context ⇒ new Cache(context, cache))
 

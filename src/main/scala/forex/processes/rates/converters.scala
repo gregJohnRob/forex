@@ -8,8 +8,9 @@ package object converters {
   def toProcessError[T <: Throwable](t: T): Error = t match {
     case OneForgeError.Generic     ⇒ Error.Generic
     case OneForgeError.System(err) ⇒ Error.System(err)
-    case e: Error                  ⇒ e
-    case e                         ⇒ Error.System(e)
+    case OneForgeError.ApiCallError(error, message) ⇒ Error.Api(error, message)
+    case e: Error ⇒ e
+    case e        ⇒ Error.System(e)
   }
 
 }

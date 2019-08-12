@@ -1,10 +1,8 @@
 package forex.services.oneforge
 
-import java.time.OffsetDateTime
-
 import akka.actor.typed.scaladsl.AskPattern._
-import akka.actor.typed.{ActorRef, ActorSystem => TypedActorSystem}
-import akka.actor.{ActorSystem, Scheduler}
+import akka.actor.typed.{ ActorRef, ActorSystem ⇒ TypedActorSystem }
+import akka.actor.{ ActorSystem, Scheduler }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.unmarshalling.Unmarshal
@@ -13,7 +11,8 @@ import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import forex.domain._
 import forex.services.oneforge.Cache.RateResponse
-import forex.services.oneforge.responses.{ApiCallError, Quote}
+import forex.services.oneforge.Error.ApiCallError
+import forex.services.oneforge.responses.Quote
 import io.circe.Json
 import monix.eval.Task
 import org.atnos.eff._
@@ -28,46 +27,12 @@ final class Live[R] private[oneforge] (apiKey: String)(
 ) extends Algebra[Eff[R, ?]] {
   import Live._
 
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
-  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-  implicit val timeout: Timeout = 10.seconds
-  val dummyPair = Rate.Pair(Currency.GBP, Currency.USD)
-  val invalidDummyRate = Rate(dummyPair, Price(BigDecimal(100)), Timestamp(OffsetDateTime.now.minusMinutes(6)))
-  val validDummyRate = Rate(dummyPair, Price(BigDecimal(10)), Timestamp(OffsetDateTime.now))
-  val cacheSystem: TypedActorSystem[Cache.CacheMessage] =
-    TypedActorSystem(Cache(Map()), "OneforgeCache")
-  val cacheRef: ActorRef[Cache.CacheMessage] = cacheSystem
-  implicit val scheduler: Scheduler = cacheSystem.scheduler
-
-  private def quoteCall(pair: Rate.Pair) =
-    s"$URL$QUOTES${pair.from}${pair.to}&$API_KEY$apiKey"
-
-  private def checkCache(pair: Rate.Pair): Task[RateResponse] =
-    Task.defer {
-      val cacheResponse = cacheSystem ? ((ref: ActorRef[Cache.RateResponse]) ⇒ Cache.GetRate(pair, ref))
-      Task.fromFuture(cacheResponse)
-    }
-
-  private def callApiWithErrors(json: Json): Either[Error, Rate] =
-    json.as[List[Quote]] match {
-      case Right(value) ⇒
-        Right(value.head.toRate)
-      case Left(_) ⇒
-        json.as[ApiCallError] match {
-          case Right(error) ⇒ Left(error.toError)
-          case Left(_) ⇒ Left(Error.Generic)
-        }
-    }
-
-  private def callApi(pair: Rate.Pair): Task[Either[Error, Rate]] =
-    Task.defer {
-      val future = Http()
-        .singleRequest(HttpRequest(uri = quoteCall(pair)))
-        .flatMap(Unmarshal(_).to[Json])
-        .map(callApiWithErrors)
-      Task.fromFuture(future)
-    }
+  implicit lazy val system: ActorSystem = ActorSystem()
+  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
+  implicit lazy val executionContext: ExecutionContextExecutor = system.dispatcher
+  implicit lazy val timeout: Timeout = 10.seconds
+  lazy val cacheSystem: TypedActorSystem[Cache.CacheMessage] = TypedActorSystem(Cache(Map()), "OneforgeCache")
+  implicit lazy val scheduler: Scheduler = cacheSystem.scheduler
 
   override def get(
       pair: Rate.Pair
@@ -78,20 +43,40 @@ final class Live[R] private[oneforge] (apiKey: String)(
         case RateResponse(Some(rate)) ⇒
           Task.now(Right(rate))
         case RateResponse(None) ⇒
-          val call = callApi(pair)
-          call.map {
-            case Right(value) ⇒
-              cacheSystem ! Cache.PutRate(value)
-              Right(value)
-            case Left(value) ⇒
-              Left(value)
-          }
+          callApi(pair)
+            .map(_.map { rate ⇒
+              cacheSystem ! Cache.PutRate(rate)
+              rate
+            })
       }
     }
     for {
       result ← fromTask(apiCall)
     } yield result
   }
+
+  private def callApi(pair: Rate.Pair): Task[Either[Error, Rate]] =
+    Task.defer {
+      val future = Http()
+        .singleRequest(HttpRequest(uri = quoteCall(pair)))
+        .flatMap(Unmarshal(_).to[Json])
+        .map(jsonToApiResponse)
+      Task.fromFuture(future)
+    }
+
+  private def quoteCall(pair: Rate.Pair) =
+    s"$URL$QUOTES${pair.from}${pair.to}&$API_KEY$apiKey"
+
+  private def jsonToApiResponse(json: Json): Either[Error, Rate] =
+    json.as[List[Quote]] match {
+      case Right(value) ⇒
+        Right(value.head.toRate)
+      case Left(_) ⇒
+        json.as[ApiCallError] match {
+          case Right(error) ⇒ Left(error)
+          case Left(_)      ⇒ Left(Error.Generic)
+        }
+    }
 }
 
 private[oneforge] object Live {
