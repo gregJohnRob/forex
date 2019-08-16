@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import forex.config.OneForgeConfig
 import forex.domain._
 import forex.services.oneforge.Error.ApiCallError
 import forex.services.oneforge.responses.Quote
@@ -16,16 +17,16 @@ import org.atnos.eff.addon.monix.task._
 
 import scala.concurrent.ExecutionContextExecutor
 
-final class Live[R] private[oneforge] (apiKey: String)(
+final class Live[R] private[oneforge] (oneForgeConfig: OneForgeConfig)(
     implicit
     m1: _task[R]
 ) extends Algebra[Eff[R, ?]] {
   import Live._
 
-  implicit lazy val system: ActorSystem = ActorSystem()
+  implicit lazy val system: ActorSystem = ActorSystem(oneForgeConfig.name)
   implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val executionContext: ExecutionContextExecutor = system.dispatcher
-  val cache: ConcurrentMapCache = ConcurrentMapCache()
+  val cache: ConcurrentMapCache = ConcurrentMapCache(oneForgeConfig.ttl)
 
   override def get(
       pair: Rate.Pair
@@ -36,9 +37,14 @@ final class Live[R] private[oneforge] (apiKey: String)(
           Task.now(Right(value))
         case None ⇒
           callApi(pair)
-            .map(_.map { rate ⇒
-              cache.put(rate)
-              rate
+            .map(x => x.flatMap { rates ⇒
+              cache.putAll(rates)
+              cache.get(pair) match {
+                case Some(value) =>
+                  Right(value)
+                case None =>
+                  Left(Error.Generic)
+              }
             })
       }
     }
@@ -47,7 +53,7 @@ final class Live[R] private[oneforge] (apiKey: String)(
     } yield result
   }
 
-  private def callApi(pair: Rate.Pair): Task[Either[Error, Rate]] =
+  private def callApi(pair: Rate.Pair): Task[Either[Error, List[Rate]]] =
     Task.defer {
       val future = Http()
         .singleRequest(HttpRequest(uri = quoteCall(pair)))
@@ -57,12 +63,12 @@ final class Live[R] private[oneforge] (apiKey: String)(
     }
 
   private def quoteCall(pair: Rate.Pair) =
-    s"$URL$QUOTES${pair.from}${pair.to}&$API_KEY$apiKey"
+    s"$URL$QUOTES${pair.from}${pair.to}&$API_KEY${oneForgeConfig.key}"
 
-  private def jsonToApiResponse(json: Json): Either[Error, Rate] =
+  private def jsonToApiResponse(json: Json): Either[Error, List[Rate]] =
     json.as[List[Quote]] match {
       case Right(value) ⇒
-        Right(value.head.toRate)
+        Right(value.map(_.toRate))
       case Left(_) ⇒
         json.as[ApiCallError] match {
           case Right(error) ⇒ Left(error)

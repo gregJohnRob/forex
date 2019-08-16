@@ -1,41 +1,76 @@
 # forex
 Implementation of Paidy Forex challenge.
 
-## Base Use Case
+# Base Use Case
 > An internal user of the application should be able to ask for an 
 > exchange rate between 2 given currencies, and get back a rate that 
 > is not older than 5 minutes. The application should at least support 
-> ten-thousand requests per day.
+> 10.000 requests per day.
 
-## Assumptions
+* Ask for exchange rate between 2 given currencies 
+* Not older than 5 minutes 
+* Support 10.000 requests per day
 
-
-## Caching
-Free tier allows for 5,000 requests per day. To support more than that, created a cache 
-typed actor. This required adding a new import of "akka-actor-typed". An actor was used
-as it would allow akka to handle the concurrent access to the cache. 
-
-From there, multiple errors occurred due to different versions of the akka libraries 
-being imported. To solve this, I went through the different libraries on Github, and 
-used the different versions of their build files to align the different versions. 
-
-This still left one more error, which I found by looking at the akka-http documentation.
-version 10.1.0 of akka-http set akka-stream to be "provided", meaning that I had to do
-an explicit import, where before it was pulled in with akka-http. 
+## Caching 
+Free tier allows for 5.000 requests per day. To support the 10.000 of the base use case,
+the results of each query to the 1Forge API need to be cached for no-longer than 5 minutes
 
 ## How to run
-In order to run the application, you need to place your API key into  
-src/main/resources/application.conf
+To run the application:
+* Download from GitHub
+* Use `sbt compile` to compile the code 
+* `sbt run` after compile will start the application and allow you to make queries. 
+* `sbt run` after compile will run the application tests
 
-Compile the application using sbt and run:
 
+# Initial implementation
+
+## Config 
+The config was expanded to include:
+
+```hocon
+  oneforge {
+    name = "live"
+    key = "vdwrZJlhfann1VXi3ynTv2PPrP8uojWI"
+  }
 ```
-sbt compile
-sbt run
+
+* Name: The name given to the actor system used to query the 1Forge API
+* Key:  The key for the 1Forge API 
+
+## Cache 
+To handle the concurrency of the cache, I used a Typed Actor. This required modifying the imports to use a more recent
+version of almost all libraries as the akka-actor version had to be the same as the version of akka-actor-typed used. 
+The typed actor controls access to Map\[Rate.Pair, Rate\]. 
+
+## Error Handling 
+Errors were improved by giving better descriptions of what went wrong. Issues with the 1Forge API (such as invalid key)
+are now passed through to the user instead of the generic response. 
+
+# Second Implementation 
+
+## Config 
+In the second pass, I added a time-to-live parameter into the config. This allows the user to set the ttl on the config.
+This change means that the 5 minute original requirement can be adjusted without having to recompile the codebase.
+```hocon
+  oneforge {
+    name = "live"
+    key = "vdwrZJlhfann1VXi3ynTv2PPrP8uojWI"
+    ttl = 5
+  }
 ```
 
-To run any tests, use "test" instead of "run".
+## Cache 
+Instead of using the Typed Actor, a Scala concurrent.map is used. In this case, a TrieMap, however the cache allows
+for a different implementation to be used. 
 
-## Error cases
-OneForge API is down (not handled)
-OneForge cache crashes (not handled)
+## Error Handling
+Using HttpResponse allows sending different status codes (for example: 500). 
+
+# Further Improvements/Experiments 
+
+## Property Based Testing
+ScalaCheck property based testing could expand upon the testing framework. 
+
+## Pact
+Contract testing using pact. 

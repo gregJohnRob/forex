@@ -27,5 +27,7 @@ case class ExecutorsConfig(
 )
 
 case class OneForgeConfig(
-    apiKey: String
+    name: String,
+    key: String,
+    ttl: Int
 )
