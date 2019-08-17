@@ -6,7 +6,7 @@ import forex.domain.Rate
 
 import scala.collection.concurrent.{ Map, TrieMap }
 
-class ConcurrentMapCache(cache: Map[Rate.Pair, Rate], ttl: Long) {
+class ConcurrentMapCache(cache: Map[Rate.Pair, Rate], ttl: Long) extends Cache {
 
   def get(pair: Rate.Pair): Option[Rate] = this.synchronized {
     cache get (pair) match {

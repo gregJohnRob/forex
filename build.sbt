@@ -31,6 +31,8 @@ val Versions = new {
   val logging       = "3.7.2"
   val kindProjector = "0.9.4"
   val paradise      = "2.1.1"
+  val scalamock     = "4.4.0"
+  val scalatest     = "3.0.6"
 }
 
 libraryDependencies ++= Seq(
@@ -52,6 +54,8 @@ libraryDependencies ++= Seq(
   "org.zalando"                    %% "grafter"              % Versions.grafter,
   "ch.qos.logback"                 %  "logback-classic"      % Versions.logback,
   "com.typesafe.scala-logging"     %% "scala-logging"        % Versions.logging,
+  "org.scalamock" %% "scalamock" % "4.4.0" % Test,
+  "org.scalatest" %% "scalatest" % "3.0.4" % Test,
   compilerPlugin("org.spire-math"  %% "kind-projector"       % Versions.kindProjector),
   compilerPlugin("org.scalamacros" %% "paradise"             % Versions.paradise cross CrossVersion.full)
 )

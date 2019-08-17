@@ -19,22 +19,28 @@ object ApiExceptionHandler {
           )
       case RatesError.System(underlying) ⇒
         ctx ⇒
-          ctx.complete(HttpResponse(
-            status = StatusCodes.InternalServerError,
-            entity = underlying.getLocalizedMessage
-          ))
+          ctx.complete(
+            HttpResponse(
+              status = StatusCodes.InternalServerError,
+              entity = underlying.getLocalizedMessage
+            )
+          )
       case err: RatesError.Api ⇒
         ctx ⇒
-          ctx.complete(HttpResponse(
-            status = StatusCodes.InternalServerError,
-            entity = err.asJson.toString()
-          ))
+          ctx.complete(
+            HttpResponse(
+              status = StatusCodes.InternalServerError,
+              entity = err.asJson.toString()
+            )
+          )
       case _: Throwable ⇒
         ctx ⇒
-          ctx.complete(HttpResponse(
-            status = StatusCodes.InternalServerError,
-            entity = "Something else went wrong"
-          ))
+          ctx.complete(
+            HttpResponse(
+              status = StatusCodes.InternalServerError,
+              entity = "Something else went wrong"
+            )
+          )
     }
 
 }
