@@ -2,13 +2,16 @@ package forex.services.oneforge
 
 import java.time.OffsetDateTime
 
-import forex.domain.{Currency, Price, Rate, Timestamp}
-import forex.main.AppStack
+import forex.domain.{ Currency, Price, Rate, Timestamp }
+import forex.main.{ AppStack, Runners }
 import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{ Matchers, WordSpec }
 
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class LiveSpec extends WordSpec with Matchers with MockFactory {
 
@@ -25,9 +28,10 @@ class LiveSpec extends WordSpec with Matchers with MockFactory {
         override def getAllRates(): Task[Either[Error, List[Rate]]] = ???
       }
       val liveInterpreter = new LiveInterpreter[AppStack](serviceCaller, cache)
-      for {
-        x ← liveInterpreter.get(pair)
-      } yield x should be(Right(rate))
+      val completed = for (x ← Runners().runApp(liveInterpreter.get(pair))) {
+        x should be(Right(rate))
+      }
+      Await.result(completed, Duration.Inf)
     }
 
     "attempt to refresh the cache if it contains a rate that is no longer valid" in {
@@ -40,9 +44,27 @@ class LiveSpec extends WordSpec with Matchers with MockFactory {
         override def getAllRates(): Task[Either[Error, List[Rate]]] = Task.now(Right(List(validRate)))
       }
       val liveInterpreter = new LiveInterpreter[AppStack](serviceCaller, cache)
-      for {
-        x ← liveInterpreter.get(pair)
-      } yield x should be(Right(validRate))
+      val completed = for (x ← Runners().runApp(liveInterpreter.get(pair))) {
+        x should be(Right(validRate))
+      }
+      Await.result(completed, Duration.Inf)
+    }
+
+    "fully update the cache" in {
+      val validRates =
+        List(new Rate(pair, new Price(100), Timestamp.now), new Rate(secondPair, new Price(12), Timestamp.now))
+      val cache: ConcurrentMapCache = new ConcurrentMapCache(new TrieMap[Rate.Pair, Rate](), ttl)
+      val mockServiceCaller = mock[ServiceCaller]
+      (() ⇒ mockServiceCaller.getAllRates()).expects().returning(Task.now(Right(validRates))).once()
+      val liveInterpreter = new LiveInterpreter[AppStack](mockServiceCaller, cache)
+
+      val completed = for {
+        x ← Runners().runApp(liveInterpreter.get(pair))
+        y ← Runners().runApp(liveInterpreter.get(secondPair))
+      } {
+        List(x, y) should be (validRates)
+      }
+      Await.result(completed, Duration.Inf)
     }
 
   }
