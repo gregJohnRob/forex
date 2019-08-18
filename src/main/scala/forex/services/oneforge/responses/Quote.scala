@@ -12,7 +12,7 @@ case class Quote(symbol: String, bid: BigDecimal, ask: BigDecimal, price: BigDec
     Rate(
       pair,
       Price(price),
-      Timestamp(OffsetDateTime.ofInstant(Instant.ofEpochMilli(timestamp * 1000), ZoneId.systemDefault()))
+      Timestamp(OffsetDateTime.ofInstant(Instant.ofEpochMilli(timestamp * 1000), ZoneId.of("UTC")))
     )
   }
 }

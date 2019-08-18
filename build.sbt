@@ -48,6 +48,7 @@ libraryDependencies ++= Seq(
   "io.circe"                       %% "circe-generic-extras" % Versions.circe,
   "io.circe"                       %% "circe-java8"          % Versions.circe,
   "io.circe"                       %% "circe-jawn"           % Versions.circe,
+  "io.circe"                       %% "circe-parser"         % Versions.circe,
   "org.atnos"                      %% "eff"                  % Versions.eff,
   "org.atnos"                      %% "eff-monix"            % Versions.eff,
   "org.typelevel"                  %% "cats-core"            % Versions.cats,
