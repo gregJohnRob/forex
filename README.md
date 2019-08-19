@@ -13,7 +13,7 @@ Implementation of Paidy Forex challenge.
 
 ## Caching 
 Free tier allows for 5.000 requests per day. To support the 10.000 of the base use case,
-the results of each query to the 1Forge API need to be cached for no-longer than 5 minutes
+the results of each query to the 1Forge API need to be cached. Anything cached can be no older than 5 minutes
 
 ## How to run
 To run the application:
@@ -26,7 +26,7 @@ To run the application:
 # Initial implementation
 
 ## Config 
-The config was expanded to include:
+I expanded the config to include:
 
 ```hocon
   oneforge {
@@ -39,13 +39,15 @@ The config was expanded to include:
 * Key:  The key for the 1Forge API 
 
 ## Cache 
-To handle the concurrency of the cache, I used a Typed Actor. This required modifying the imports to use a more recent
-version of almost all libraries as the akka-actor version had to be the same as the version of akka-actor-typed used. 
-The typed actor controls access to Map\[Rate.Pair, Rate\]. 
+To handle the concurrency of the cache, I used a Typed Actor. To do this, I had to modify the imports to include akka-actor-typed.
+Making this change resulted in updating a large number of other versions as akka-actor-typed had to be the same version as
+akka-actor, which then resulted in a domino effect where multiple libraries were updated. 
+
+The Typed Actor controls access to a Map\[Rate.Pair, Rate\], which was used to store the rates. 
 
 ## Error Handling 
-Errors were improved by giving better descriptions of what went wrong. Issues with the 1Forge API (such as invalid key)
-are now passed through to the user instead of the generic response. 
+I improved the errors by giving better descriptions of what went wrong. Issues with the 1Forge API (such as invalid key)
+were passed through to the user instead of the generic response. 
 
 # Second Implementation 
 After I finished the initial implementation, I went back to the Git repo for the interview and saw an old pull request 
@@ -65,16 +67,19 @@ This change means that the 5 minute original requirement can be adjusted without
 ```
 
 ## Cache 
-Instead of using the Typed Actor, a Scala concurrent.map is used. In this case, a TrieMap, however the cache allows
+Instead of using the Typed Actor, I used a Scala concurrent.map. In this case, a TrieMap, however the cache allows
 for a different implementation to be used. 
 
-## Error Handling
-Using HttpResponse allows sending different status codes (for example: 500). 
+I decided to use the as it greatly reduced the amount of code that was needed, while still controlling access to the 
+map that was used for caching.
 
-## Testing 
-In order to test the application, the Live Interpreter was split so that it would take a Cache and ServiceCaller as 
-parameters on creation. This allowed me to mock these traits. 
-The ServiceCaller was tested to make sure it was properly converting the Json output from 1Forge. 
+## Error Handling
+I updated the exception handler to return HttpResponses. This allows for sending different status codes (for example: 500),
+which could then be expanded upon later on.
+
+# Testing 
+In order to test the application, I reworked the Live Interpreter to take in traits Cache and ServiceCaller. These could
+then be mocked when testing the Live Interpreter, and tested separately to ensure that they worked as well.
 
 # Further Improvements/Experiments 
 
