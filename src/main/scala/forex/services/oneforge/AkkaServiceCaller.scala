@@ -9,7 +9,6 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import forex.config.OneForgeConfig
 import forex.domain._
 import forex.services.oneforge.Error.ApiCallError
-import forex.services.oneforge.responses.Quote
 import io.circe.Json
 import monix.eval.Task
 
@@ -36,7 +35,7 @@ class AkkaServiceCaller(oneForgeConfig: OneForgeConfig) extends ServiceCaller {
   def jsonToApiResponse(json: Json): Either[Error, List[Rate]] =
     json.as[List[Quote]] match {
       case Right(value) ⇒
-        Right(value.map(_.toRate))
+        Right(value.map(_.toRate).filter(_.isSuccess).map(_.get))
       case Left(_) ⇒
         json.as[ApiCallError] match {
           case Right(error) ⇒ Left(error)

@@ -61,6 +61,43 @@ class AkkaServiceCallerSpec extends WordSpec with Matchers {
       )
       actual should be(expected)
     }
+
+    "only return rates for known currencies" in {
+      val message =
+        """
+          |[
+          | {
+          |   "symbol": "EURUSD",
+          |   "bid": 1.10893,
+          |   "ask": 1.10921,
+          |   "price": 1.10907,
+          |   "quota_used": 50975,
+          |   "timestamp": 1566125600
+          |  },
+          |  {
+          |   "symbol": "ABCEFG",
+          |   "bid": 1.10893,
+          |   "ask": 1.10921,
+          |   "price": 1.10907,
+          |   "quota_used": 50975,
+          |   "timestamp": 1566125600
+          |  }
+          |]
+          |""".stripMargin
+      val actual = parse(message).map(serviceCaller.jsonToApiResponse)
+      val expected = Right(
+        Right(
+          List(
+            Rate(
+              Rate.Pair(Currency.EUR, Currency.USD),
+              Price(1.10907),
+              Timestamp(OffsetDateTime.ofInstant(Instant.ofEpochMilli(1566125600L * 1000), ZoneId.of("UTC")))
+            )
+          )
+        )
+      )
+      actual should be(expected)
+    }
   }
 
 }
