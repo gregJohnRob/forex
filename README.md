@@ -1,5 +1,5 @@
 # forex
-Implementation of Paidy Forex challenge.
+Implementation of Paidy Forex challenge. 
 
 # Base Use Case
 > An internal user of the application should be able to ask for an 
@@ -90,3 +90,19 @@ A potential improvement I am going to call "eager caching". The idea would be th
 something should be dropped or not, it could ping the 1Forge api to see how many requests were left in the day, and how
 long it had to use it. This would mean that on slow days, it would eagerly drop the cached value to give the more 
 up-to-date values. 
+
+
+# Breakdown
+This section gives a breakdown of all changes made on a per-file basis:
+
+* src/main/resources/reference.conf: Added 1Forge config containing name of Actor System; API key; ttl for the cache (set to 5 as per requirements)
+* src/main/scala/forex/config/config: Added 1Forge config case class (and reader)
+* src/main/scala/forex/interfaces/api/rates/Routes: Now check to make sure that any pairs given to the api are unique
+* src/main/scala/forex/interfaces/api/utils/ApiExceptionHandler: Added HttpResponses to the output; return localized messages from exceptions; added pass-through exception for 1Forge errors
+* src/main/scala/forex/main/Processes: Call the Live interpreter instead of Dummy Interpreter
+* src/main/scala/forex/services/oneforge/AkkaServiceCaller: Implemented the Service Caller Trait for calling 1Forge API using Akka Http
+* src/main/scala/forex/services/oneforge/Cache: Trait for different implementations of a cache for the Live Interpreter
+* src/main/scala/forex/services/oneforge/ConcurrentMapCache: Implementation of the Cache using a concurrent Map
+* src/main/scala/forex/services/oneforge/Error: Added an ApiCallError for passing errors from 1Forge API
+* src/main/scala/forex/services/oneforge/Interpreters: Deleted Dummy Interpreter and added Live implementation
+* src/main/scala/forex/services/oneforge/ServiceCaller: Service Caller trait for accessing the 1Forge API

@@ -33,12 +33,12 @@ object ApiExceptionHandler {
               entity = err.asJson.toString()
             )
           )
-      case _: Throwable ⇒
+      case err: Throwable ⇒
         ctx ⇒
           ctx.complete(
             HttpResponse(
               status = StatusCodes.InternalServerError,
-              entity = "Something else went wrong"
+              entity = err.getLocalizedMessage
             )
           )
     }

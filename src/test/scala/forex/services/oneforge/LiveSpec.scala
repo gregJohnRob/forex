@@ -27,7 +27,7 @@ class LiveSpec extends WordSpec with Matchers with MockFactory {
       val serviceCaller = new ServiceCaller {
         override def getAllRates(): Task[Either[Error, List[Rate]]] = ???
       }
-      val liveInterpreter = new LiveInterpreter[AppStack](serviceCaller, cache)
+      val liveInterpreter = new Live[AppStack](serviceCaller, cache)
       val completed = for (x ← Runners().runApp(liveInterpreter.get(pair))) {
         x should be(Right(rate))
       }
@@ -43,7 +43,7 @@ class LiveSpec extends WordSpec with Matchers with MockFactory {
       val serviceCaller = new ServiceCaller {
         override def getAllRates(): Task[Either[Error, List[Rate]]] = Task.now(Right(List(validRate)))
       }
-      val liveInterpreter = new LiveInterpreter[AppStack](serviceCaller, cache)
+      val liveInterpreter = new Live[AppStack](serviceCaller, cache)
       val completed = for (x ← Runners().runApp(liveInterpreter.get(pair))) {
         x should be(Right(validRate))
       }
@@ -56,13 +56,29 @@ class LiveSpec extends WordSpec with Matchers with MockFactory {
       val cache: ConcurrentMapCache = new ConcurrentMapCache(new TrieMap[Rate.Pair, Rate](), ttl)
       val mockServiceCaller = mock[ServiceCaller]
       (() ⇒ mockServiceCaller.getAllRates()).expects().returning(Task.now(Right(validRates))).once()
-      val liveInterpreter = new LiveInterpreter[AppStack](mockServiceCaller, cache)
+      val liveInterpreter = new Live[AppStack](mockServiceCaller, cache)
 
       val completed = for {
         x ← Runners().runApp(liveInterpreter.get(pair))
         y ← Runners().runApp(liveInterpreter.get(secondPair))
       } {
-        List(x, y) should be (validRates)
+        List(x, y) should be(validRates.map(Right(_)))
+      }
+      Await.result(completed, Duration.Inf)
+    }
+
+    "Return an Error if it could not find pair in cache even after update" in {
+      val validRates =
+        List()
+      val cache: ConcurrentMapCache = new ConcurrentMapCache(new TrieMap[Rate.Pair, Rate](), ttl)
+      val mockServiceCaller = mock[ServiceCaller]
+      (() ⇒ mockServiceCaller.getAllRates()).expects().returning(Task.now(Right(validRates))).once()
+      val liveInterpreter = new Live[AppStack](mockServiceCaller, cache)
+
+      val completed = for {
+        x ← Runners().runApp(liveInterpreter.get(pair))
+      } {
+        x.isLeft should be (true)
       }
       Await.result(completed, Duration.Inf)
     }

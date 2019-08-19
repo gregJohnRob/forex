@@ -20,9 +20,4 @@ object Converters {
       price = rate.price,
       timestamp = rate.timestamp
     )
-
-  def toGetApiErrorResponse(
-      error: Error
-  ) = GetApiErrorResponse(error.getMessage)
-
 }

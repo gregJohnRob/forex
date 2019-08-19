@@ -18,4 +18,4 @@ project/plugins/project/
 .idea
 
 # Hide the API Key
-src/main/resources/application.conf
+src/main/resources/reference.conf
